@@ -17,8 +17,6 @@ public class PlayerController : MonoBehaviour
         public bool MoveRight;
         public bool MoveUp;
         public bool MoveDown;
-        public bool StopMovement;
-        public bool StopRotation;
     }
 
     private Inputs m_inputs;
@@ -84,23 +82,15 @@ public class PlayerController : MonoBehaviour
         {
             m_inputs.MoveDown = true;
         }
-
-        if (Input.GetKey(KeyCode.LeftShift))
-        {
-            m_inputs.StopMovement = true;
-        }
-
-        if (Input.GetKey(KeyCode.RightShift))
-        {
-            m_inputs.StopRotation = true;
-        }
     }
     #endregion
 
-    private Vector3 m_velocity = Vector3.zero;
-    private float m_rollSpeed = 0;
-    private float m_pitchSpeed = 0;
-    private float m_yawSpeed = 0;
+    private Rigidbody m_rigidbody;
+
+    private Vector3 m_deltaVelocity = Vector3.zero;
+    private float m_deltaRollSpeed = 0;
+    private float m_deltaPitchSpeed = 0;
+    private float m_deltaYawSpeed = 0;
 
     [SerializeField]
     private float m_moveAccelerationMultiplier = 1.0f;
@@ -129,6 +119,7 @@ public class PlayerController : MonoBehaviour
     private void Awake()
     {
         m_inputs = new Inputs();
+        m_rigidbody = GetComponent<Rigidbody>();
     }
 
     private void Update()
@@ -146,122 +137,91 @@ public class PlayerController : MonoBehaviour
 
     private void Move()
     {
+        Debug.Log($"Vel: {m_rigidbody.velocity.magnitude}");
         // Rotation velocity changes
-        if (m_inputs.StopRotation)
+        if (m_inputs.RollLeft)
         {
-            m_pitchSpeed += -m_pitchSpeed * m_rotateAccelerationMultiplier * Time.fixedDeltaTime;
-            
-            if (Mathf.Abs(m_pitchSpeed) < m_minRotSpeed)
-            {
-                m_pitchSpeed = 0;
-            }
-
-            m_yawSpeed += -m_yawSpeed * m_rotateAccelerationMultiplier * Time.fixedDeltaTime;
-
-            if (Mathf.Abs(m_yawSpeed) < m_minRotSpeed)
-            {
-                m_yawSpeed = 0;
-            }
-
-            m_rollSpeed += -m_rollSpeed * m_rotateAccelerationMultiplier * Time.fixedDeltaTime;
-
-            if (Mathf.Abs(m_rollSpeed) < m_minRotSpeed)
-            {
-                m_rollSpeed = 0;
-            }
+            m_deltaRollSpeed += m_rotateAccelerationMultiplier * Time.fixedDeltaTime;
         }
-        else
+
+        if (m_inputs.RollRight)
         {
-            if (m_inputs.RollLeft)
-            {
-                m_rollSpeed += m_rotateAccelerationMultiplier * Time.fixedDeltaTime;
-            }
+            m_deltaRollSpeed -= m_rotateAccelerationMultiplier * Time.fixedDeltaTime;
+        }
 
-            if (m_inputs.RollRight)
-            {
-                m_rollSpeed -= m_rotateAccelerationMultiplier * Time.fixedDeltaTime;
-            }
+        if (m_inputs.PitchUp)
+        {
+            m_deltaPitchSpeed -= m_rotateAccelerationMultiplier * Time.fixedDeltaTime;
+        }
 
-            if (m_inputs.PitchUp)
-            {
-                m_pitchSpeed -= m_rotateAccelerationMultiplier * Time.fixedDeltaTime;
-            }
+        if (m_inputs.PitchDown)
+        {
+            m_deltaPitchSpeed += m_rotateAccelerationMultiplier * Time.fixedDeltaTime;
+        }
 
-            if (m_inputs.PitchDown)
-            {
-                m_pitchSpeed += m_rotateAccelerationMultiplier * Time.fixedDeltaTime;
-            }
+        if (m_inputs.YawLeft)
+        {
+            m_deltaYawSpeed -= m_rotateAccelerationMultiplier * Time.fixedDeltaTime;
+        }
 
-            if (m_inputs.YawLeft)
-            {
-                m_yawSpeed -= m_rotateAccelerationMultiplier * Time.fixedDeltaTime;
-            }
-
-            if (m_inputs.YawRight)
-            {
-                m_yawSpeed += m_rotateAccelerationMultiplier * Time.fixedDeltaTime;
-            }
+        if (m_inputs.YawRight)
+        {
+            m_deltaYawSpeed += m_rotateAccelerationMultiplier * Time.fixedDeltaTime;
         }
 
         // Movement velocity changes
-        if (m_inputs.StopMovement)
+        if (m_inputs.MoveForward)
         {
-            m_velocity += -m_velocity.normalized * m_moveAccelerationMultiplier * Time.fixedDeltaTime;
-
-            if (m_velocity.magnitude < m_minSpeed)
-            {
-                m_velocity = Vector3.zero;
-            }
+            m_deltaVelocity += transform.forward * m_moveAccelerationMultiplier * Time.fixedDeltaTime;
         }
-        else
+
+        if (m_inputs.MoveBackward)
         {
-            if (m_inputs.MoveForward)
-            {
-                m_velocity += transform.forward * m_moveAccelerationMultiplier * Time.fixedDeltaTime;
-            }
+            m_deltaVelocity += -transform.forward * m_moveAccelerationMultiplier * Time.fixedDeltaTime;
+        }
 
-            if (m_inputs.MoveBackward)
-            {
-                m_velocity += -transform.forward * m_moveAccelerationMultiplier * Time.fixedDeltaTime;
-            }
+        if (m_inputs.MoveLeft)
+        {
+            m_deltaVelocity += -transform.right * m_moveAccelerationMultiplier * Time.fixedDeltaTime;
+        }
 
-            if (m_inputs.MoveLeft)
-            {
-                m_velocity += -transform.right * m_moveAccelerationMultiplier * Time.fixedDeltaTime;
-            }
+        if (m_inputs.MoveRight)
+        {
+            m_deltaVelocity += transform.right * m_moveAccelerationMultiplier * Time.fixedDeltaTime;
+        }
 
-            if (m_inputs.MoveRight)
-            {
-                m_velocity += transform.right * m_moveAccelerationMultiplier * Time.fixedDeltaTime;
-            }
+        if (m_inputs.MoveUp)
+        {
+            m_deltaVelocity += transform.up * m_moveAccelerationMultiplier * Time.fixedDeltaTime;
+        }
 
-            if (m_inputs.MoveUp)
-            {
-                m_velocity += transform.up * m_moveAccelerationMultiplier * Time.fixedDeltaTime;
-            }
-
-            if (m_inputs.MoveDown)
-            {
-                m_velocity += -transform.up * m_moveAccelerationMultiplier * Time.fixedDeltaTime;
-            }
+        if (m_inputs.MoveDown)
+        {
+            m_deltaVelocity += -transform.up * m_moveAccelerationMultiplier * Time.fixedDeltaTime;
         }
 
         // Clamping velocities
-        m_velocity = Vector3.ClampMagnitude(m_velocity, m_maxSpeed);
-        m_rollSpeed = Mathf.Clamp(m_rollSpeed, -m_maxRollSpeed, m_maxRollSpeed);
-        m_yawSpeed = Mathf.Clamp(m_yawSpeed, -m_maxYawSpeed, m_maxYawSpeed);
-        m_pitchSpeed = Mathf.Clamp(m_pitchSpeed, -m_maxPitchSpeed, m_maxPitchSpeed);
+        m_deltaVelocity = Vector3.ClampMagnitude(m_deltaVelocity, m_maxSpeed);
+        m_deltaRollSpeed = Mathf.Clamp(m_deltaRollSpeed, -m_maxRollSpeed, m_maxRollSpeed);
+        m_deltaYawSpeed = Mathf.Clamp(m_deltaYawSpeed, -m_maxYawSpeed, m_maxYawSpeed);
+        m_deltaPitchSpeed = Mathf.Clamp(m_deltaPitchSpeed, -m_maxPitchSpeed, m_maxPitchSpeed);
 
         // Move
-        transform.position += m_velocity;
+        m_rigidbody.AddForce(m_deltaVelocity, ForceMode.Acceleration);
 
         // Roll
-        transform.Rotate(Vector3.forward * m_rollSpeed);
+        m_rigidbody.AddTorque(transform.forward * m_deltaRollSpeed, ForceMode.Acceleration);
 
         // Pitch
-        transform.Rotate(Vector3.right * m_pitchSpeed);
+        m_rigidbody.AddTorque(transform.right * m_deltaPitchSpeed, ForceMode.Acceleration);
 
         // Yaw
-        transform.Rotate(Vector3.up * m_yawSpeed);
+        m_rigidbody.AddTorque(transform.up * m_deltaYawSpeed, ForceMode.Acceleration);
+
+        // Reset so we don't keep adding velocity to rigidbody
+        m_deltaVelocity = Vector3.zero;
+        m_deltaRollSpeed = 0;
+        m_deltaYawSpeed = 0;
+        m_deltaPitchSpeed = 0;
     }
 }
