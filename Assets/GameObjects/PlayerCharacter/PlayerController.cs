@@ -85,6 +85,28 @@ public class PlayerController : MonoBehaviour
     }
     #endregion
 
+    #region SOUNDS
+
+    [SerializeField]
+    private AudioClip m_impactClip;
+
+    [SerializeField]
+    [Range(0,1)]
+    private float m_impactClipVolumeMin;
+
+    [SerializeField]
+    [Range(0,1)]
+    private float m_impactClipVolumeMax;
+
+    [SerializeField]
+    [Range(0,10)]
+    private float m_impactNoiseMult;
+
+    [SerializeField]
+    private AudioSource m_propulsionAudioSource;
+
+    #endregion
+
     private Rigidbody m_rigidbody;
 
     private Vector3 m_deltaVelocity = Vector3.zero;
@@ -94,6 +116,9 @@ public class PlayerController : MonoBehaviour
 
     [SerializeField]
     private float m_moveAccelerationMultiplier = 1.0f;
+
+    [SerializeField]
+    private float m_forwardAccelerationMultiplier = 5.0f;
 
     [SerializeField]
     private float m_rotateAccelerationMultiplier = 1.0f;
@@ -135,9 +160,14 @@ public class PlayerController : MonoBehaviour
         m_inputs = new Inputs();
     }
 
+    private void LateUpdate()
+    {
+        // Update propulsion noise volume
+        m_propulsionAudioSource.volume = Mathf.Lerp(0.2f, 1.0f, m_rigidbody.velocity.sqrMagnitude * 0.25f);
+    }
+
     private void Move()
     {
-        Debug.Log($"Vel: {m_rigidbody.velocity.magnitude}");
         // Rotation velocity changes
         if (m_inputs.RollLeft)
         {
@@ -172,7 +202,7 @@ public class PlayerController : MonoBehaviour
         // Movement velocity changes
         if (m_inputs.MoveForward)
         {
-            m_deltaVelocity += transform.forward * m_moveAccelerationMultiplier * Time.fixedDeltaTime;
+            m_deltaVelocity += transform.forward * m_moveAccelerationMultiplier * m_forwardAccelerationMultiplier * Time.fixedDeltaTime;
         }
 
         if (m_inputs.MoveBackward)
@@ -223,5 +253,12 @@ public class PlayerController : MonoBehaviour
         m_deltaRollSpeed = 0;
         m_deltaYawSpeed = 0;
         m_deltaPitchSpeed = 0;
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        // Play impact sound
+        float volume = Random.Range(m_impactClipVolumeMin, m_impactClipVolumeMax) * collision.relativeVelocity.magnitude * m_impactNoiseMult;
+        AudioSource.PlayClipAtPoint(m_impactClip, collision.GetContact(0).point, volume);
     }
 }
